@@ -1,0 +1,16 @@
+{
+  "name": "My App",
+  "version": "1.0.0",
+  "description": "",
+  "cache": false,
+  "where":"/",
+  "modules":{
+      "print":"print.js",
+      "math":"math.js",
+      "chalk":"chalk.js",
+      "is":"index.js",
+      "sjcl":"sjcl.js",
+      "hook":"hook.js",
+      "socket":"socket.js"
+  }
+}
