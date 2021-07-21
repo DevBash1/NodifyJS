@@ -59,6 +59,23 @@ let {sum} = require("/math.js");
 
 sum(1,9) //10
 ```
+You can also require from a URL.
+
+db.js
+```javascript
+let nodb = require("https://raw.githubusercontent.com/DevBash1/NoDB/main/JavaScript/nodb.js");
+
+
+let db = new nodb({
+    database:"myDB",
+    path:"myDB.nodb",
+    encrypt:true,
+    password: "12345678",
+})
+
+module.exports = db;
+```
+
 You can create a json file in the root directory.
 Then declare your modules there with there names and require them with there names.
 Set "where" to tell NodifyJS which directory holds the modules.
