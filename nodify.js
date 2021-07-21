@@ -80,10 +80,19 @@ function ajaxSync(json) {
             console.warn(res);
         }
     }
+    xh.onerror = function(){
+        console.warn("Could Not Load Module from '"+url+"'");
+        return false;
+    }
     if (type.toLowerCase() == "get") {
         xh.open(type, url, false);
         xh.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xh.send();
+        try{
+            xh.send();
+        }catch(e){
+            console.warn("Could Not Load Module from '"+url+"'");
+            return false;
+        }
     } else if (type.toLowerCase() == "post") {
         xh.open(type, url, false);
         xh.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -492,26 +501,30 @@ function require(name) {
 
     let app;
 
+    let appURL = location.protocol + "//" + location.host + "/app.json";
+
+    //Load from url first
+    
+    app = ajaxSync({
+        url: appURL,
+        type: "GET",
+        params: ""
+    });
+
     //Get from cache
-    let cached = localStorage.getItem("node_app.json");
-    if (cached != null) {
-        app = cached;
-    } else {
-        let appURL = location.protocol + "//" + location.host + "/app.json";
-
-        app = ajaxSync({
-            url: appURL,
-            type: "GET",
-            params: ""
-        });
-
-        if (app.startsWith("Module Import Error:")) {
+    
+    if (app.startsWith("Module Import Error:")) {
+        //try to use cache
+        let cached = localStorage.getItem("node_app.json");
+        if(cached != null){
+            app = cached;
+        }else{
             console.warn("app.json could not be loaded");
             return false;
-        } else {
-            //cache app.json
-            localStorage.setItem("node_app.json", app);
         }
+    } else {
+        //cache app.json
+        localStorage.setItem("node_app.json", app);
     }
 
     let file;
@@ -520,8 +533,11 @@ function require(name) {
 
     if (customModules.includes(name)) {
         let __dirname = location.href;
+        __filename = name;
         return customFunctions[customModules.indexOf(name)];
     } else if (name.startsWith("http://") || name.startsWith("https://") || name.includes("/")) {
+        __filename = name.substring(name.lastIndexOf("/")+1,name.length);
+
         if (__dirname == undefined) {
             __dirname = name.substring(0, name.lastIndexOf("/"));
         }
@@ -533,6 +549,7 @@ function require(name) {
         }
         if (!name.substring(name.lastIndexOf("/"), name.length).includes(".")) {
             newName = newName + ".js";
+            __filename = __filename + ".js";
         }
 
         let response = ajaxSync({
@@ -540,6 +557,12 @@ function require(name) {
             type: "GET",
             params: ""
         });
+        
+        //Catch Error and return false
+        if(response == false){
+            return false;
+        }
+
         //Cache Module
         if (!response.startsWith("Module Import Error:")) {
             localStorage.setItem("node_" + name, response);
@@ -561,7 +584,7 @@ function require(name) {
             return false;
         } else {
             __dirname = json.where;
-            __filename = json.where + name;
+            __filename = json.modules[name];
             let modules = Object.keys(json.modules);
 
             if (modules.includes(name)) {
@@ -654,13 +677,7 @@ function require(name) {
             try {
                 return eval(file);
             } catch (e) {
-                let err = (e.toString() + "\n\tat (" + json.modules[name] + ")");
-                if (json.modules[name] != undefined) {
-                    console.warn("Error From '" + json.modules[name] + "'");
-                } else {
-                    console.warn("Error From '" + name + "'");
-                }
-                throw (err);
+                throw(e);
             }
         } else if (file.trim().startsWith("{") && file.trim().endsWith("}")) {
             try {
@@ -675,11 +692,13 @@ function require(name) {
         if (json.modules[name] != undefined) {
             let err = (e.toString() + "\n\tat (" + json.modules[name] + ")");
             console.warn("Error From '" + json.modules[name] + "'");
-            throw (err);
+            console.error(err);
+            return false;
         } else {
             let err = (e.toString() + "\n\tat (" + name + ")");
             console.warn("Error From '" + name + "'");
-            throw (err);
+            console.error(err);
+            return false;
         }
     }
 }
